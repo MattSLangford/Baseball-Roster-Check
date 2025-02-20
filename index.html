@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baseball Roster Check</title>
+    <meta name="description" content="Quickly view the 40-man roster for any Major League Baseball team, organized by position with jersey numbers.">
+    <meta name="author" content="Matt Langford">
+    <meta name="keywords" content="MLB, baseball, roster, teams, players, stats, jersey numbers">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://baseballrostercheck.com/">
+    <meta property="og:title" content="Baseball Roster Check">
+    <meta property="og:description" content="Quickly view the 40-man roster for any Major League Baseball team, organized by position with jersey numbers.">
+    <meta property="og:image" content="https://baseballrostercheck.com/sm.jpg">
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Baseball Roster Check">
+    <meta name="twitter:description" content="Quickly view the 40-man roster for any Major League Baseball team, organized by position with jersey numbers.">
+    <meta name="twitter:image" content="https://baseballrostercheck.com/sm.jpg">
+    <meta name="twitter:creator" content="@mattslangford">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f8f9fa;
+            color: #333;
+            padding: 20px;
+        }
+        h1 {
+            color: #0056b3;
+        }
+        select {
+            padding: 8px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        #teamLogo img {
+            width: 150px;
+            margin: 20px auto;
+            display: block;
+        }
+        #stadiumInfo {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        #roster {
+            margin-top: 20px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: left;
+        }
+        .position-group {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .position-group h3 {
+            background: #0056b3;
+            color: white;
+            padding: 8px;
+            margin: 0;
+            border-radius: 8px 8px 0 0;
+        }
+        .player-list {
+            list-style: none;
+            padding: 10px;
+            margin: 0;
+        }
+        .player-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .player-list li:last-child {
+            border-bottom: none;
+        }
+        footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <h1>Baseball Roster Check</h1>
+    <select id="teamSelect">
+        <option value="">Select a team</option>
+    </select>
+    <div id="teamLogo"></div>
+    <div id="stadiumInfo"></div>
+    <div id="roster"></div>
+    <footer>
+        <p><a href="https://mattlangford.com" target="_blank" style="color: #0056b3; text-decoration: none;">Created by Matt Langford</a> | <a href="https://x.com/mattslangford" target="_blank" style="color: #0056b3; text-decoration: none;">Follow on Twitter/X</a></p>
+    </footer>
+
+    <script>
+        const teamSelect = document.getElementById('teamSelect');
+        const teamLogo = document.getElementById('teamLogo');
+        const stadiumInfo = document.getElementById('stadiumInfo');
+        const rosterDiv = document.getElementById('roster');
+        const footer = document.getElementById('footer');
+
+        // Fetch team data from MLB Stats API
+        fetch('https://statsapi.mlb.com/api/v1/teams?sportId=1')
+            .then(response => response.json())
+            .then(data => {
+                const teams = data.teams.sort((a, b) => a.name.localeCompare(b.name));
+                teams.forEach(team => {
+                    const option = document.createElement('option');
+                    option.value = team.id;
+                    option.textContent = team.name;
+                    teamSelect.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching teams:', error));
+
+        teamSelect.addEventListener('change', () => {
+            const teamId = teamSelect.value;
+            if (teamId) {
+                fetchTeamData(teamId);
+            } else {
+                teamLogo.innerHTML = '';
+                stadiumInfo.textContent = '';
+                rosterDiv.innerHTML = '';
+                footer.textContent = '';
+            }
+        });
+
+        function fetchTeamData(teamId) {
+            // Fetch team details
+            fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const team = data.teams[0];
+                    displayTeamLogo(team);
+                    displayStadiumInfo(team);
+                })
+                .catch(error => console.error('Error fetching team details:', error));
+
+            // Fetch team roster
+            fetch(`https://statsapi.mlb.com/api/v1/teams/${teamId}/roster`)
+                .then(response => response.json())
+                .then(data => {
+                    displayRoster(data.roster);
+                    updateFooter();
+                })
+                .catch(error => console.error('Error fetching roster:', error));
+        }
+
+        function displayTeamLogo(team) {
+            const logoUrl = `https://www.mlbstatic.com/team-logos/${team.id}.svg`;
+            teamLogo.innerHTML = `<img src="${logoUrl}" alt="${team.name} Logo">`;
+        }
+
+        function displayStadiumInfo(team) {
+            stadiumInfo.textContent = `Stadium: ${team.venue.name}`;
+        }
+
+        function displayRoster(roster) {
+            const positionMap = {
+                P: 'P', C: 'C',
+                'LF': 'OF', 'CF': 'OF', 'RF': 'OF', 'OF': 'OF',
+                '1B': 'IF', '2B': 'IF', '3B': 'IF', 'SS': 'IF',
+                DH: 'DH'
+            };
+
+            const positions = ['P', 'C', 'OF', 'IF', 'DH', 'Other/Multi'];
+            const positionGroups = { P: [], C: [], OF: [], IF: [], DH: [], 'Other/Multi': [] };
+
+            roster.forEach(player => {
+                const pos = positionMap[player.position.abbreviation] || 'Other/Multi';
+                positionGroups[pos].push(player);
+            });
+
+            // Alphabetize players by last name
+            positions.forEach(pos => {
+                positionGroups[pos].sort((a, b) => {
+                    const lastNameA = a.person.fullName.split(' ').pop();
+                    const lastNameB = b.person.fullName.split(' ').pop();
+                    return lastNameA.localeCompare(lastNameB);
+                });
+            });
+
+            rosterDiv.innerHTML = '';
+            positions.forEach(pos => {
+                if (positionGroups[pos].length > 0) {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'position-group';
+                    const title = document.createElement('h3');
+                    title.textContent = pos;
+                    groupDiv.appendChild(title);
+
+                    const list = document.createElement('ul');
+                    list.className = 'player-list';
+
+                    positionGroups[pos].forEach(player => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `${player.person.fullName} #${player.jerseyNumber}`;
+                        list.appendChild(listItem);
+                    });
+
+                    groupDiv.appendChild(list);
+                    rosterDiv.appendChild(groupDiv);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
